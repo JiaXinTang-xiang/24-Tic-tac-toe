@@ -6,7 +6,7 @@
 """
 
 import time
-from ai import find_best_move, check_win
+from lzjpy.ai import find_best_move, check_win
 
 
 class GameEngine:

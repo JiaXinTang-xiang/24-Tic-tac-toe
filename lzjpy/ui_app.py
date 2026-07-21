@@ -5,10 +5,10 @@ import os, sys, json, time, cv2, numpy as np
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import customtkinter as ctk
-from chess_detection import (detect_chessboard, draw_board_overlay,
+from lzjpy.chess_detection import (detect_chessboard, draw_board_overlay,
                               load_calibration, init_undistort_maps)
-from game_engine import GameEngine
-from serial_client import SerialClient
+from lzjpy.game_engine import GameEngine
+from lzjpy.serial_client import SerialClient
 
 _yolo_detect = None
 DEFAULT_PARAMS = {"canny_low": 50, "canny_high": 150, "area_min": 7000,
@@ -475,7 +475,7 @@ class TicTacToeApp(ctk.CTk):
     def _yolo_detect(self, frame):
         global _yolo_detect
         if _yolo_detect is None:
-            from chess_detection import detect_pieces_yolo
+            from lzjpy.chess_detection import detect_pieces_yolo
             _yolo_detect = detect_pieces_yolo
         return _yolo_detect(frame, self.squares_center, self.inner_radius,
                            conf=params.get("yolo_conf", 0.4))
