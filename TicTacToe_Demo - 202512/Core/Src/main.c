@@ -39,7 +39,6 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -162,46 +161,16 @@ int main(void)
   while (1)
   {
 
-
 		if(UART1_Rx_flg ==1)//串口发送控制命令，单片机串口接收到17个字节数据后
 		{
 			if(USART1_RecCommand() ==1)//命令解析取数据
 			{
 				TakeAndPutDownTheChess(PosBuf0[0], PosBuf0[1], PosBuf1[0], PosBuf1[1]);//在指定位置取棋子，并放到指定坐标处
 			}
-
 			UART1_Rx_flg = 0;
 			HAL_UART_Receive_IT(&huart1, RecBuf, 17);//等待下一次的接收
 		}
-
-
-		GetKeyStatue();//获取按键状态值，放在大循环中处理占用时间短的话，按键识别不到按键抬键
-
-
-
-TakeAndPutDownTheChess(Chessplace[0][0], Chessplace[0][1], Chessplace[1][0], Chessplace[1][1]);
-HAL_Delay(500);
-TakeAndPutDownTheChess(Chessplace[2][0], Chessplace[2][1], Chessplace[3][0], Chessplace[3][1]);
-HAL_Delay(500);	
-TakeAndPutDownTheChess(Chessplace[4][0], Chessplace[4][1], Chessplace[5][0], Chessplace[5][1]);
-HAL_Delay(500);	
-TakeAndPutDownTheChess(Chessplace[6][0], Chessplace[6][1], Chessplace[7][0], Chessplace[7][1]);
-HAL_Delay(500);	
-TakeAndPutDownTheChess(Chessplace[8][0], Chessplace[8][1], Chessplace[9][0], Chessplace[9][1]);
-HAL_Delay(500);
-
-
-
-
-
-
-
-
-
-
-
-
-
+		GetKeyStatue();//获取按键状态值，放在大循环中处理占用时间短的话，按键识别不到按键抬
 
 
 // 		if(PressTheKeyAction != PressNoneKey) //有按键按下时按键状态的改变
