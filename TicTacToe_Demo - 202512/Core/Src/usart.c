@@ -22,15 +22,15 @@
 #include "usart.h"
 
 /* USER CODE BEGIN 0 */
-uint8_t RecBuf[17]={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};//���ڽ�������
-uint8_t UART1_Rx_flg = 0;//���ڽ��������жϱ�־
-uint16_t UART1_Rx_cnt = 17;//���ڽ������ݸ���
+uint8_t RecBuf[17]={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}; //串口接收数据缓冲区
+uint8_t UART1_Rx_flg = 0; //串口接收完成中断标志
+uint16_t UART1_Rx_cnt = 17; //串口接收数据个数
 
 
 
-uint8_t RecBuf2[12]={0,1,2,3,4,5,7,8,9,10,11};//���12���ֽڵ�λ������	
-uint16_t PosBuf0[3] = {0,0,0};//ȡ���ӵ�Դλ������
-uint16_t PosBuf1[3] = {0,0,0};//�����ӵ�Ŀ��λ������
+uint8_t RecBuf2[12]={0,1,2,3,4,5,7,8,9,10,11}; //缓存12个字节的位置数据
+uint16_t PosBuf0[3] = {0,0,0}; //存放棋子的源位置数据
+uint16_t PosBuf1[3] = {0,0,0}; //存放棋子的目标位置数据
 
 /* USER CODE END 0 */
 
@@ -128,67 +128,67 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 }
 
 /* USER CODE BEGIN 1 */
-uint8_t USART1_RecCommand(void)//���ڽ�������
+uint8_t USART1_RecCommand(void) //串口接收数据处理
 {
 	uint8_t temp = 0;
 
-////		if(HAL_UART_Receive(&huart1,RecBuf,17,100) == HAL_OK)//���յ�17���ֽ�����
-		
-		//�������ݣ���Ҫ�ǵ����ڶ����ֽ�У��ֵ,��X��Y���겻�ܳ�������������˶��ķ�Χ����
-//AA 0F A1 00 C8 00 00 00 00 04 00 00 00 00 00 62 55	//��ȷ����������1
-//AA 0F A1 00 00 00 64 00 00 00 00 03 80 00 00 49 55	//��ȷ����������2
-//AA 0F A1 00 96 00 96 00 00 04 01 03 16 00 00 BE 55 //��ȷ����������3
+		if(HAL_UART_Receive(&huart1,RecBuf,17,100) == HAL_OK) //收到17个字节数据
 
-//AA 0F A1 01 12 01 AB 00 00 02 34 02 45 00 00 68 55//����,У��λ����68��Ӧ��Ϊ66
-//AA 0F A1 09 12 01 AB 00 00 02 34 02 45 00 00 6E 55//����,��һ��X���곬����
-//AA 0F A1 01 12 01 AB 00 00 02 34 09 45 00 00 6D 55//����,�ڶ���Y���곬����
+		//接收数据，要注意第二个字节校验值，且X和Y坐标不能超过步进电机的运动范围
+//AA 0F A1 00 C8 00 00 00 00 04 00 00 00 00 00 62 55	//正确数据示例1
+//AA 0F A1 00 00 00 64 00 00 00 00 03 80 00 00 49 55	//正确数据示例2
+//AA 0F A1 00 96 00 96 00 00 04 01 03 16 00 00 BE 55  //正确数据示例3
 
-	
-	
-//			HAL_UART_Transmit(&huart1,RecBuf,17,10); //��ʾ���У��ֵ ,����ʱ��������
+//AA 0F A1 01 12 01 AB 00 00 02 34 02 45 00 00 68 55  //错误，校验位错误68应为66
+//AA 0F A1 09 12 01 AB 00 00 02 34 02 45 00 00 6E 55  //错误，第一个X坐标超范围
+//AA 0F A1 01 12 01 AB 00 00 02 34 09 45 00 00 6D 55  //错误，第二个Y坐标超范围
 
-			temp = RecBuf[1];			
-			for(uint8_t i = 2;i<=14;i++)//��У��ֵ
+
+
+			HAL_UART_Transmit(&huart1,RecBuf,17,10); //显示接收的数据，调试时可以打开
+
+			temp = RecBuf[1];
+			for(uint8_t i = 2;i<=14;i++) //计算校验值
       {
 				temp = temp ^ RecBuf[i];
-      }	
-			
-//			HAL_UART_Transmit(&huart1,&temp,1,10); //��ʾ���У��ֵ ,����ʱ��������
-			
-			if(RecBuf[0] == 0xAA && RecBuf[16] == 0x55 && RecBuf[15] == temp)
-			{				
+      }
 
-				PosBuf0[0] = RecBuf[3]<<8 | RecBuf[4];//3��16λ����,Դλ������
+			HAL_UART_Transmit(&huart1,&temp,1,10); //显示计算的校验值，调试时可以打开
+
+			if(RecBuf[0] == 0xAA && RecBuf[16] == 0x55 && RecBuf[15] == temp)
+			{
+
+				PosBuf0[0] = RecBuf[3]<<8 | RecBuf[4]; //3个16位数据，源位置数据
 				PosBuf0[1] = RecBuf[5]<<8 | RecBuf[6];
 				PosBuf0[2] = RecBuf[7]<<8 | RecBuf[8];
-				PosBuf1[0] = RecBuf[9]<<8 | RecBuf[10];//3��16λ���ݣ�Ŀ��λ������
+				PosBuf1[0] = RecBuf[9]<<8 | RecBuf[10]; //3个16位数据，目标位置数据
 				PosBuf1[1] = RecBuf[11]<<8 | RecBuf[12];
 				PosBuf1[2] = RecBuf[13]<<8 | RecBuf[14];
-				if(PosBuf0[0] <= MAXPosX && PosBuf0[1] <= MAXPosY && PosBuf1[0] <= MAXPosX && PosBuf1[1] <= MAXPosY)//�ж����귶Χ
+				if(PosBuf0[0] <= MAXPosX && PosBuf0[1] <= MAXPosY && PosBuf1[0] <= MAXPosX && PosBuf1[1] <= MAXPosY) //判断坐标范围
 				{
-					//��6��16λ����ת��Ϊ12���ֽڣ����ڷ�����֤
-					RecBuf2[0] = PosBuf0[0]>>8;//ȡ��8λ
-					RecBuf2[1] = PosBuf0[0];//ȡ��8λ
+					//将6个16位数据转换为12个字节，用于发送验证
+					RecBuf2[0] = PosBuf0[0]>>8; //取高8位
+					RecBuf2[1] = PosBuf0[0];    //取低8位
 					RecBuf2[2] = PosBuf0[1]>>8;
 					RecBuf2[3] = PosBuf0[1];
 					RecBuf2[4] = PosBuf0[2]>>8;
 					RecBuf2[5] = PosBuf0[2];
-					RecBuf2[6] = PosBuf1[0]>>8;//ȡ��8λ
-					RecBuf2[7] = PosBuf1[0];//ȡ��8λ
+					RecBuf2[6] = PosBuf1[0]>>8; //取高8位
+					RecBuf2[7] = PosBuf1[0];    //取低8位
 					RecBuf2[8] = PosBuf1[1]>>8;
 					RecBuf2[9] = PosBuf1[1];
 					RecBuf2[10] = PosBuf1[2]>>8;
-					RecBuf2[11] = PosBuf1[2];				
-//					HAL_UART_Transmit(&huart1,RecBuf2,12,10); //��ʾ��ȡ������ֵ������ʱ��������	
+					RecBuf2[11] = PosBuf1[2];
+					HAL_UART_Transmit(&huart1,RecBuf2,12,10); //显示获取的数据值，调试时可以打开
 					return(1);
 				}
 			}
-			
 
-			Beep(200);//�������������������������⣬ԭ��Ϊ��У��ֵ���Ի�X��Y���곬������������˶��ķ�Χ
+
+			Beep(200); //蜂鸣器报警，数据校验失败，原因是校验值错误或X/Y坐标超出步进电机运动范围
 			return(0);
 
-	
+
 }
 
 /* USER CODE END 1 */

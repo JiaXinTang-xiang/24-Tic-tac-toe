@@ -179,16 +179,6 @@ int main(void)
 
 
 
-TakeAndPutDownTheChess(Chessplace[0][0], Chessplace[0][1], Chessplace[1][0], Chessplace[1][1]);
-HAL_Delay(500);
-TakeAndPutDownTheChess(Chessplace[2][0], Chessplace[2][1], Chessplace[3][0], Chessplace[3][1]);
-HAL_Delay(500);	
-TakeAndPutDownTheChess(Chessplace[4][0], Chessplace[4][1], Chessplace[5][0], Chessplace[5][1]);
-HAL_Delay(500);	
-TakeAndPutDownTheChess(Chessplace[6][0], Chessplace[6][1], Chessplace[7][0], Chessplace[7][1]);
-HAL_Delay(500);	
-TakeAndPutDownTheChess(Chessplace[8][0], Chessplace[8][1], Chessplace[9][0], Chessplace[9][1]);
-HAL_Delay(500);
 
 
 

@@ -42,7 +42,7 @@ void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
-uint8_t USART1_RecCommand(void);//���ڽ�������
+uint8_t USART1_RecCommand(void); //串口接收数据处理
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
