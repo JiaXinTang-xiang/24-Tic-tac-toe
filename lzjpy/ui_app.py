@@ -3,7 +3,7 @@
 
 import os, sys, json, time, cv2, numpy as np
 from PIL import Image
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import customtkinter as ctk
 from lzjpy.chess_detection import (detect_chessboard, draw_board_overlay,
                               load_calibration, init_undistort_maps)
@@ -176,11 +176,14 @@ class TicTacToeApp(ctk.CTk):
         # -- 题目 --
         ctk.CTkLabel(R, text="题目选择", font=fb).grid(row=r, column=0, sticky="w", **P); r += 1
         tf = ctk.CTkFrame(R, fg_color="transparent"); tf.grid(row=r, column=0, sticky="ew", padx=3)
-        for i, d in enumerate(["(1)单黑","(2)两黑两白","(3)旋转棋盘","(4)AI先手","(5)人先手","(6)作弊检测"], 1):
+        tasks = ["(1)单黑","(2)两黑两白","(3)旋转棋盘",
+                 "(4)AI先手","(5)人先手","(6)作弊检测","(8)双人对弈"]
+        for i, d in enumerate(tasks):
+            t = 8 if d == "(8)双人对弈" else i + 1
             ctk.CTkButton(tf, text=d, height=30, font=F(size=12),
-                          command=lambda t=i: self._on_task(t)).grid(
-                row=(i-1)//2, column=(i-1)%2, padx=2, pady=2, sticky="ew")
-            tf.grid_columnconfigure((i-1)%2, weight=1)
+                          command=lambda t=t: self._on_task(t)).grid(
+                row=i//2, column=i%2, padx=2, pady=2, sticky="ew")
+            tf.grid_columnconfigure(i%2, weight=1)
         r += 1
 
         # -- 执棋 --
@@ -297,13 +300,24 @@ class TicTacToeApp(ctk.CTk):
         self.target_label.configure(text="(未选择 / 点击棋盘)")
         self.win_label.configure(text="", fg_color="#1a2a1a")
         self.cheat_frame.grid_forget()
+        # 题目8: 双人对弈, 按钮文字随当前玩家变化
+        if t == 8:
+            self.btn_confirm.configure(text="确认落子 (黑方)")
+        else:
+            self.btn_confirm.configure(text="确认落子")
         self._update_status()
 
     def _on_side(self, s): self.engine.side = s
 
     def _on_board_click(self, idx):
         """点击棋盘格子切换选中"""
-        if idx in self.grid_selected:
+        if self.engine.task == 8:
+            # 双人对弈: 单选模式, 点击不同格子替换选中
+            if self.grid_selected and self.grid_selected[0] == idx:
+                self.grid_selected.clear()
+            else:
+                self.grid_selected = [idx]
+        elif idx in self.grid_selected:
             self.grid_selected.remove(idx)
         else:
             self.grid_selected.append(idx)
@@ -320,6 +334,27 @@ class TicTacToeApp(ctk.CTk):
         """确认落子按钮"""
         eng = self.engine
 
+        # --- 题目(8): 双人对弈 ---
+        if eng.task == 8:
+            if not self.grid_selected:
+                self.win_label.configure(text="请先在棋盘上选择落子位置!", fg_color="#4a3a1a")
+                return
+            grid_num = self.grid_selected[0] + 1
+            player = "黑方" if eng.step_count % 2 == 0 else "白方"
+            print(f"[UI] {player} 落子格子{grid_num}")
+            result = eng.execute_human_move(grid_num)
+            self.grid_selected = []
+            self.target_label.configure(text="(未选择)")
+            self._update_status()
+            if eng.status == "done":
+                self._show_winner()
+                self.btn_confirm.configure(text="确认落子")
+            else:
+                next_player = "黑方" if eng.step_count % 2 == 0 else "白方"
+                self.btn_confirm.configure(text=f"确认落子 ({next_player})")
+            return
+
+        # --- 题目(1)-(6) ---
         # (2)(3) 批量: 检查是否选了4个格子
         if eng.task in (1, 2, 3):
             if not self.grid_selected:
@@ -356,6 +391,14 @@ class TicTacToeApp(ctk.CTk):
 
     def _show_winner(self):
         w = self.engine.winner
+        if self.engine.task == 8:
+            if w == 0:
+                self.win_label.configure(text="平局!", fg_color="#3a3a1a")
+            elif w == 1:
+                self.win_label.configure(text="黑方 获胜!", fg_color="#1a3a1a")
+            elif w == 2:
+                self.win_label.configure(text="白方 获胜!", fg_color="#3a3a1a")
+            return
         if w == 0:
             self.win_label.configure(text="平局!", fg_color="#3a3a1a")
         elif w == self.engine.side:
@@ -404,11 +447,16 @@ class TicTacToeApp(ctk.CTk):
         self.timer_label.configure(text=f"用时: {t:.1f}s / 15s",
                                    fg_color="#3a1a1a" if t > 12 else "#2a1a1a")
         # 回合
-        sd = "黑" if eng.side == 1 else "白"
-        turn_text = "系统" if eng.turn == "system" else "对手"
         b, w, e = eng.get_counts()
-        self.round_label.configure(
-            text=f"回合: {turn_text} | 黑:{b} 白:{w} | 系统执{sd} | 题{eng.task}")
+        if eng.task == 8:
+            current = "黑方" if eng.step_count % 2 == 0 else "白方"
+            self.round_label.configure(
+                text=f"双人对弈 | 当前: {current} | 黑:{b} 白:{w}")
+        else:
+            sd = "黑" if eng.side == 1 else "白"
+            turn_text = "系统" if eng.turn == "system" else "对手"
+            self.round_label.configure(
+                text=f"回合: {turn_text} | 黑:{b} 白:{w} | 系统执{sd} | 题{eng.task}")
         # 胜负
         if eng.status == "done":
             self._show_winner()
@@ -435,20 +483,9 @@ class TicTacToeApp(ctk.CTk):
                     try: self.pieces, self.detections = self._yolo_detect(frame)
                     except: pass
 
-                # 更新棋盘 + 自动检测人落子
+                # 更新棋盘状态 (不做自动检测，人通过按钮确认)
                 if self.engine.status not in ("idle",):
                     self.engine.process_vision_result(self.pieces)
-                    # 等待人落子时, 自动检测棋盘变化
-                    if self.engine.status == "waiting_human":
-                        moved = self.engine.check_human_moved()
-                        if moved:
-                            print(f"[AUTO] 检测到人落子在格子{moved}")
-                            self.engine.human_confirmed()
-                            self._update_status()
-                            if self.engine.status == "ai_thinking":
-                                self._do_ai_move()
-                            if self.engine.status == "done":
-                                self._show_winner()
 
                 # 裁剪棋盘
                 hl = self.grid_selected[-1] if self.grid_selected else -1

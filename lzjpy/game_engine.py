@@ -64,6 +64,9 @@ class GameEngine:
         elif task_num == 6:
             self.turn = "human"
             self.status = "waiting_human"
+        elif task_num == 8:
+            # 双人对弈: 黑方先行, 轮流点击格子, 机器执行落子
+            self.status = "waiting_human"
 
         return self.get_status_text()
 
@@ -216,6 +219,48 @@ class GameEngine:
                 self.turn = "human"
                 self.status = "waiting_human"
                 is_last = False
+
+        self.round_start = time.time()
+        return grid_num, (is_last or self.status == "done")
+
+    # ==================================================================
+    # 题目(8): 双人对弈 — 人点格子, 机器执行
+    # ==================================================================
+    def execute_human_move(self, grid_num):
+        """
+        执行人类玩家选择的落子位置.
+        黑先白后交替, 发送串口指令让机械臂执行.
+        返回: (grid_num, is_done)
+        """
+        row, col = (grid_num - 1) // 3, (grid_num - 1) % 3
+
+        # 黑先白后交替
+        piece_color = 1 if self.step_count % 2 == 0 else 2
+        self.board[row][col] = piece_color
+        self.step_count += 1
+        elapsed = time.time() - self.round_start
+        self.move_times.append(elapsed)
+
+        # 串口发送
+        piece_zone = 0 if piece_color == 1 else 1
+        if self.serial:
+            self.serial.send_piece_command(piece_zone, grid_num)
+        else:
+            pname = "黑" if piece_color == 1 else "白"
+            print(f"[ENGINE] 双人对弈: {pname}方 → 格子{grid_num}")
+
+        # 检查胜负
+        self.winner = check_win(self.board)
+        if self.winner != -1:
+            self.status = "done"
+            is_last = True
+        elif all(self.board[i][j] != 0 for i in range(3) for j in range(3)):
+            self.winner = 0
+            self.status = "done"
+            is_last = True
+        else:
+            self.status = "waiting_human"  # 等下一个玩家
+            is_last = False
 
         self.round_start = time.time()
         return grid_num, (is_last or self.status == "done")
