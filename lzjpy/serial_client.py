@@ -46,7 +46,7 @@ WHITE_PIECES = [(2030, 330), (2030, 503), (2030, 675), (2030, 847), (2030, 1020)
 Z_DEFAULT = 0
 
 # UI、视觉和机械臂共用左上到右下的标准格子编号。图像方向在 ui_app 中统一校正。
-GRID_REMAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9}
+GRID_REMAP = {1:1, 2:4, 3:7, 4:2, 5:5, 6:8, 7:3, 8:6, 9:9}
 
 # =====================================================================
 # 协议常量
@@ -201,7 +201,7 @@ class SerialClient:
             from_pos: 棋子区 0=黑 1=白
             to_pos:   目标格子 1-9
         """
-        # GRID_REMAP 已在 vision 和 click 层面处理, 此处不再映射
+        to_pos = GRID_REMAP.get(to_pos, to_pos)  # 视觉→物理
         if from_pos == 0:
             idx = self.black_idx % len(BLACK_PIECES)
             src_x, src_y = BLACK_PIECES[idx]

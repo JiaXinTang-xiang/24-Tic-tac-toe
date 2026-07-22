@@ -531,7 +531,6 @@ class TicTacToeApp(ctk.CTk):
                 # 摄像头相对棋盘转了 90 度且图像左右镜像；后续检测和所有
                 # UI 棋盘均只使用这一个已校正的坐标系。
                 frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-                frame = cv2.flip(frame, 1)
                 cl, ch = int(params["canny_low"]), int(params["canny_high"])
                 amin, amax = int(params["area_min"]), int(params["area_max"])
                 result = detect_chessboard(frame, canny_low=cl, canny_high=ch,
@@ -551,13 +550,14 @@ class TicTacToeApp(ctk.CTk):
                 if self.engine.status not in ("idle",):
                     self.engine.process_vision_result(self.pieces)
 
-                # 裁剪棋盘
+                # 裁剪棋盘 (pieces 按视觉顺序, 画面也按视觉显示)
                 hl = self.grid_selected[-1] if self.grid_selected else -1
                 ci = draw_crop_board(frame, self.board_box, self.pieces, highlight=hl, size=300)
                 self.crop_board.update(ci if ci is not None else frame)
 
-                # 虚拟棋盘
-                self.virtual_board.update(draw_virtual_board(self.pieces, highlight=hl, size=180))
+                # 虚拟棋盘: 显示引擎内部棋盘 (物理顺序)
+                self.virtual_board.update(draw_virtual_board(
+                    self.engine.get_board_1d(), highlight=hl, size=180))
 
                 # 摄像头预览(等比)
                 pw, ph = self.cam_preview.winfo_width(), self.cam_preview.winfo_height()
