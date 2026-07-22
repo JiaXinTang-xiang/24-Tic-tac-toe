@@ -41,6 +41,9 @@ class GameEngine:
         self.cheated_pieces = []
         self.move_times = []
         self.round_start = 0
+        if self.serial:
+            self.serial.black_idx = 0
+            self.serial.white_idx = 0
 
     # ==================================================================
     # 题目启动

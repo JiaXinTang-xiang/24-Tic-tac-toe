@@ -104,7 +104,7 @@ class TicTacToeApp(ctk.CTk):
         self.title("三子棋对弈系统")
         self.geometry("1150x720")
         self.minsize(1050, 620)
-        self.engine = GameEngine(SerialClient())
+        self.engine = GameEngine(SerialClient(port='/dev/ttyUSB0'))
         self.cap = None; self.running = True
         self.use_undistort = False; self.map1 = self.map2 = None
         self.squares_center = None; self.inner_radius = 30
@@ -226,6 +226,8 @@ class TicTacToeApp(ctk.CTk):
                       command=self._on_reset).pack(side="left", padx=2)
         ctk.CTkButton(bf, text="清空", width=55, height=42, fg_color="#555",
                       command=self._on_clear).pack(side="left", padx=2)
+        ctk.CTkButton(bf, text="标定", width=55, height=42, fg_color="#2a4a2a",
+                      command=self._on_calibrate).pack(side="left", padx=2)
         r += 1
 
         # -- 计时器 --
@@ -242,6 +244,22 @@ class TicTacToeApp(ctk.CTk):
         # -- 回合+棋盘统计 --
         self.round_label = ctk.CTkLabel(R, text="", font=F(size=13))
         self.round_label.grid(row=r, column=0, sticky="w", padx=8, pady=2); r += 1
+
+        # -- 机械臂调试: 手动输入脉冲坐标测试位置 --
+        ctk.CTkLabel(R, text="机械臂测试 (脉冲坐标)", font=fb).grid(row=r, column=0, sticky="w", **P); r += 1
+        df = ctk.CTkFrame(R, fg_color="transparent"); df.grid(row=r, column=0, sticky="ew", padx=3, pady=2); r += 1
+        ctk.CTkLabel(df, text="X:", font=fn).pack(side="left", padx=3)
+        self.test_x = ctk.CTkEntry(df, width=55, height=28, font=fn)
+        self.test_x.pack(side="left", padx=2)
+        self.test_x.insert(0, "1175")
+        ctk.CTkLabel(df, text="Y:", font=fn).pack(side="left", padx=3)
+        self.test_y = ctk.CTkEntry(df, width=55, height=28, font=fn)
+        self.test_y.pack(side="left", padx=2)
+        self.test_y.insert(0, "675")
+        ctk.CTkButton(df, text="测试落子", width=72, height=28, font=F(size=12),
+                      fg_color="#2a5a2a", command=self._on_test_move).pack(side="left", padx=4)
+        self.test_label = ctk.CTkLabel(df, text="", font=F(size=11), text_color="gray")
+        self.test_label.pack(side="left", padx=5)
 
         # -- 作弊弹窗区域 --
         self.cheat_frame = ctk.CTkFrame(R, fg_color="#4a2020", corner_radius=8)
@@ -420,6 +438,34 @@ class TicTacToeApp(ctk.CTk):
         self.win_label.configure(text=f"已恢复棋子到格子: {restored}", fg_color="#2a3a1a")
         self._update_status()
 
+    def _on_calibrate(self):
+        """手动标定: 棋盘放标准位后点此按钮"""
+        if self.squares_center:
+            self.engine.serial.calibration.reset()
+            self.engine.serial.calibration.calibrate(self.squares_center)
+            self.win_label.configure(text="标定完成!", fg_color="#2a3a1a")
+        else:
+            self.win_label.configure(text="未检测到棋盘, 标定失败", fg_color="#3a1a1a")
+
+    def _on_test_move(self):
+        """机械臂测试: 手动输入脉冲坐标, 从黑棋区取棋放到指定位置"""
+        try:
+            x = int(self.test_x.get())
+            y = int(self.test_y.get())
+        except ValueError:
+            self.test_label.configure(text="请输入有效数字")
+            return
+        from lzjpy.serial_client import build_frame, CMD_PLACE_PIECE, Z_DEFAULT, BLACK_PIECES
+        frame = build_frame(cmd=CMD_PLACE_PIECE,
+                            src_x=BLACK_PIECES[0][0], src_y=BLACK_PIECES[0][1], src_z=Z_DEFAULT,
+                            dst_x=x, dst_y=y, dst_z=Z_DEFAULT)
+        if self.engine.serial.enabled:
+            self.engine.serial.serial.write(frame)
+            self.test_label.configure(text=f"已发送 ({x},{y})")
+        else:
+            self.test_label.configure(text=f"模拟 ({x},{y}), 串口未连")
+            print(f"[TEST] 模拟: ({x},{y})")
+
     def _on_reset(self):
         self.squares_center = None; self.board_box = None
         self.pieces = [0]*9; self._on_clear()
@@ -482,6 +528,13 @@ class TicTacToeApp(ctk.CTk):
                 if self.squares_center:
                     try: self.pieces, self.detections = self._yolo_detect(frame)
                     except: pass
+
+                    # 首次检测到棋盘 → 自动标定; 每帧更新脉冲坐标
+                    cal = self.engine.serial.calibration
+                    if not cal.is_ready():
+                        cal.calibrate(self.squares_center)
+                    else:
+                        cal.update_grid_positions(self.squares_center)
 
                 # 更新棋盘状态 (不做自动检测，人通过按钮确认)
                 if self.engine.status not in ("idle",):
