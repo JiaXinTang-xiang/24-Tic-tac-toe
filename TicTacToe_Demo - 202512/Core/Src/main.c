@@ -174,11 +174,11 @@ int main(void)
 
 		GetKeyStatue();//获取按键状态值，放在大循环中处理占用时间短的话，按键识别不到按键抬键
 
-        TakeAndPutDownTheChess(Chessboard[0][0], Chessboard[0][1], Chessboard[1][0], Chessboard[1][1]);
-		TakeAndPutDownTheChess(Chessboard[2][0], Chessboard[2][1], Chessboard[3][0], Chessboard[3][1]);
-		TakeAndPutDownTheChess(Chessboard[4][0], Chessboard[4][1], Chessboard[5][0], Chessboard[5][1]);
-		TakeAndPutDownTheChess(Chessboard[6][0], Chessboard[6][1], Chessboard[7][0], Chessboard[7][1]);
-		TakeAndPutDownTheChess(Chessboard[8][0], Chessboard[8][1], Chessboard[0][0], Chessboard[0][1]);
+//        TakeAndPutDownTheChess(Chessboard[0][0], Chessboard[0][1], Chessboard[1][0], Chessboard[1][1]);
+//		TakeAndPutDownTheChess(Chessboard[2][0], Chessboard[2][1], Chessboard[3][0], Chessboard[3][1]);
+//		TakeAndPutDownTheChess(Chessboard[4][0], Chessboard[4][1], Chessboard[5][0], Chessboard[5][1]);
+//		TakeAndPutDownTheChess(Chessboard[6][0], Chessboard[6][1], Chessboard[7][0], Chessboard[7][1]);
+//		TakeAndPutDownTheChess(Chessboard[8][0], Chessboard[8][1], Chessboard[0][0], Chessboard[0][1]);
 
 
 
