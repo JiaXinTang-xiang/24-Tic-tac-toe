@@ -328,7 +328,10 @@ class TicTacToeApp(ctk.CTk):
     def _on_side(self, s): self.engine.side = s
 
     def _on_board_click(self, idx):
-        """点击棋盘格子切换选中"""
+        """点击棋盘格子切换选中 (视觉格子 → 物理格子)"""
+        from lzjpy.serial_client import GRID_REMAP
+        idx = GRID_REMAP.get(idx + 1, idx + 1) - 1  # 视觉→物理
+        print(f"[CLICK] 物理格子={idx+1}, task={self.engine.task}")
         if self.engine.task == 8:
             # 双人对弈: 单选模式, 点击不同格子替换选中
             if self.grid_selected and self.grid_selected[0] == idx:
@@ -517,6 +520,8 @@ class TicTacToeApp(ctk.CTk):
         if self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                frame = cv2.flip(frame, 1)  # 左右镜像校正显示
                 if self.use_undistort:
                     frame = cv2.remap(frame, self.map1, self.map2, cv2.INTER_LINEAR)
                 cl, ch = int(params["canny_low"]), int(params["canny_high"])
@@ -529,11 +534,9 @@ class TicTacToeApp(ctk.CTk):
                     try: self.pieces, self.detections = self._yolo_detect(frame)
                     except: pass
 
-                    # 首次检测到棋盘 → 自动标定; 每帧更新脉冲坐标
+                    # 每帧更新脉冲坐标 (需手动点"标定"启用)
                     cal = self.engine.serial.calibration
-                    if not cal.is_ready():
-                        cal.calibrate(self.squares_center)
-                    else:
+                    if cal.is_ready():
                         cal.update_grid_positions(self.squares_center)
 
                 # 更新棋盘状态 (不做自动检测，人通过按钮确认)
@@ -543,6 +546,8 @@ class TicTacToeApp(ctk.CTk):
                 # 裁剪棋盘
                 hl = self.grid_selected[-1] if self.grid_selected else -1
                 ci = draw_crop_board(frame, self.board_box, self.pieces, highlight=hl, size=300)
+                if ci is not None:
+                    ci = cv2.rotate(ci, cv2.ROTATE_90_CLOCKWISE)
                 self.crop_board.update(ci if ci is not None else frame)
 
                 # 虚拟棋盘

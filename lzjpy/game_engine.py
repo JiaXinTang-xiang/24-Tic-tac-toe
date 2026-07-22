@@ -84,11 +84,15 @@ class GameEngine:
     # 棋盘更新 + 自动检测人落子
     # ==================================================================
     def process_vision_result(self, pieces_1d):
-        """视觉检测 → 更新棋盘, 保存上一步用于作弊检测"""
+        """视觉检测 → 重映射为物理顺序 → 更新棋盘"""
+        from lzjpy.serial_client import GRID_REMAP
+        remapped = [0] * 9
+        for vis_grid, phys_grid in GRID_REMAP.items():
+            remapped[phys_grid - 1] = pieces_1d[vis_grid - 1]
         self.prev_board = [row[:] for row in self.board]
         for i in range(3):
             for j in range(3):
-                self.board[i][j] = pieces_1d[i * 3 + j]
+                self.board[i][j] = remapped[i * 3 + j]
 
     def check_human_moved(self):
         """
