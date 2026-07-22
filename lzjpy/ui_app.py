@@ -37,6 +37,9 @@ def draw_virtual_board(pieces, highlight=-1, size=200):
     for idx in range(9):
         row, col = idx // 3, idx % 3
         cx, cy = col*cs + cs//2, row*cs + cs//2
+        cv2.putText(img, str(idx + 1), (col * cs + 5, row * cs + 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (70, 70, 70), 1,
+                    cv2.LINE_AA)
         r = int(cs*0.35)
         if pieces[idx] == 1: cv2.circle(img, (cx,cy), r, (40,40,40), -1)
         elif pieces[idx] == 2:
@@ -60,6 +63,9 @@ def draw_crop_board(frame, board_box, pieces, highlight=-1, size=300):
     for idx in range(9):
         row, col = idx // 3, idx % 3
         cx, cy = col*cs + cs//2, row*cs + cs//2
+        cv2.putText(crop, str(idx + 1), (col * cs + 7, row * cs + 24),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1,
+                    cv2.LINE_AA)
         r = int(cs*0.35)
         if pieces[idx] == 1: cv2.circle(crop, (cx,cy), r, (0,0,0), -1)
         elif pieces[idx] == 2:
@@ -328,10 +334,8 @@ class TicTacToeApp(ctk.CTk):
     def _on_side(self, s): self.engine.side = s
 
     def _on_board_click(self, idx):
-        """点击棋盘格子切换选中 (视觉格子 → 物理格子)"""
-        from lzjpy.serial_client import GRID_REMAP
-        idx = GRID_REMAP.get(idx + 1, idx + 1) - 1  # 视觉→物理
-        print(f"[CLICK] 物理格子={idx+1}, task={self.engine.task}")
+        """点击棋盘格子切换选中。UI、视觉和游戏逻辑均使用同一编号。"""
+        print(f"[CLICK] 格子={idx+1}, task={self.engine.task}")
         if self.engine.task == 8:
             # 双人对弈: 单选模式, 点击不同格子替换选中
             if self.grid_selected and self.grid_selected[0] == idx:
@@ -520,10 +524,14 @@ class TicTacToeApp(ctk.CTk):
         if self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
-                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-                frame = cv2.flip(frame, 1)  # 左右镜像校正显示
+                # 标定参数对应摄像头原始的 640x480 图像，必须先去畸变。
                 if self.use_undistort:
                     frame = cv2.remap(frame, self.map1, self.map2, cv2.INTER_LINEAR)
+
+                # 摄像头相对棋盘转了 90 度且图像左右镜像；后续检测和所有
+                # UI 棋盘均只使用这一个已校正的坐标系。
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                frame = cv2.flip(frame, 1)
                 cl, ch = int(params["canny_low"]), int(params["canny_high"])
                 amin, amax = int(params["area_min"]), int(params["area_max"])
                 result = detect_chessboard(frame, canny_low=cl, canny_high=ch,
@@ -546,8 +554,6 @@ class TicTacToeApp(ctk.CTk):
                 # 裁剪棋盘
                 hl = self.grid_selected[-1] if self.grid_selected else -1
                 ci = draw_crop_board(frame, self.board_box, self.pieces, highlight=hl, size=300)
-                if ci is not None:
-                    ci = cv2.rotate(ci, cv2.ROTATE_90_CLOCKWISE)
                 self.crop_board.update(ci if ci is not None else frame)
 
                 # 虚拟棋盘
@@ -558,9 +564,10 @@ class TicTacToeApp(ctk.CTk):
                 if pw > 50 and ph > 50:
                     fh, fw = frame.shape[:2]
                     s = min((pw-4)/fw, (ph-4)/fh)
-                    prv = cv2.resize(frame, (int(fw*s), int(fh*s)))
-                    pv2 = draw_board_overlay(prv, self.squares_center,
+                    # 棋盘坐标基于原始 frame，先绘制再缩放，避免标记错位。
+                    pv2 = draw_board_overlay(frame, self.squares_center,
                                              self.inner_radius, self.board_box, self.pieces, 0)
+                    pv2 = cv2.resize(pv2, (int(fw*s), int(fh*s)))
                     ci2 = cv2_to_ctk(pv2, int(fw*s), int(fh*s))
                     if ci2: self.cam_preview.configure(image=ci2, text="")
 
