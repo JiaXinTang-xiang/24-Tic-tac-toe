@@ -41,6 +41,9 @@ class GameEngine:
         self.cheated_pieces = []
         self.move_times = []
         self.round_start = 0
+        if self.serial:
+            self.serial.black_idx = 0
+            self.serial.white_idx = 0
 
     # ==================================================================
     # 题目启动
@@ -81,7 +84,7 @@ class GameEngine:
     # 棋盘更新 + 自动检测人落子
     # ==================================================================
     def process_vision_result(self, pieces_1d):
-        """视觉检测 → 更新棋盘, 保存上一步用于作弊检测"""
+        """视觉检测结果按 UI 的标准 1-9 顺序更新棋盘。"""
         self.prev_board = [row[:] for row in self.board]
         for i in range(3):
             for j in range(3):

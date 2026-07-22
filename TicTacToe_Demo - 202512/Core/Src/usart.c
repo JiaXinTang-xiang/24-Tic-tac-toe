@@ -132,7 +132,7 @@ uint8_t USART1_RecCommand(void) //串口接收数据处理
 {
 	uint8_t temp = 0;
 
-		if(HAL_UART_Receive(&huart1,RecBuf,17,100) == HAL_OK) //收到17个字节数据
+		//		if(HAL_UART_Receive(&huart1,RecBuf,17,100) == HAL_OK) //收到17个字节数据
 
 		//接收数据，要注意第二个字节校验值，且X和Y坐标不能超过步进电机的运动范围
 //AA 0F A1 00 C8 00 00 00 00 04 00 00 00 00 00 62 55	//正确数据示例1

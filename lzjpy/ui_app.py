@@ -37,6 +37,9 @@ def draw_virtual_board(pieces, highlight=-1, size=200):
     for idx in range(9):
         row, col = idx // 3, idx % 3
         cx, cy = col*cs + cs//2, row*cs + cs//2
+        cv2.putText(img, str(idx + 1), (col * cs + 5, row * cs + 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (70, 70, 70), 1,
+                    cv2.LINE_AA)
         r = int(cs*0.35)
         if pieces[idx] == 1: cv2.circle(img, (cx,cy), r, (40,40,40), -1)
         elif pieces[idx] == 2:
@@ -60,6 +63,9 @@ def draw_crop_board(frame, board_box, pieces, highlight=-1, size=300):
     for idx in range(9):
         row, col = idx // 3, idx % 3
         cx, cy = col*cs + cs//2, row*cs + cs//2
+        cv2.putText(crop, str(idx + 1), (col * cs + 7, row * cs + 24),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1,
+                    cv2.LINE_AA)
         r = int(cs*0.35)
         if pieces[idx] == 1: cv2.circle(crop, (cx,cy), r, (0,0,0), -1)
         elif pieces[idx] == 2:
@@ -104,7 +110,7 @@ class TicTacToeApp(ctk.CTk):
         self.title("三子棋对弈系统")
         self.geometry("1150x720")
         self.minsize(1050, 620)
-        self.engine = GameEngine(SerialClient())
+        self.engine = GameEngine(SerialClient(port='/dev/ttyUSB0'))
         self.cap = None; self.running = True
         self.use_undistort = False; self.map1 = self.map2 = None
         self.squares_center = None; self.inner_radius = 30
@@ -226,6 +232,8 @@ class TicTacToeApp(ctk.CTk):
                       command=self._on_reset).pack(side="left", padx=2)
         ctk.CTkButton(bf, text="清空", width=55, height=42, fg_color="#555",
                       command=self._on_clear).pack(side="left", padx=2)
+        ctk.CTkButton(bf, text="标定", width=55, height=42, fg_color="#2a4a2a",
+                      command=self._on_calibrate).pack(side="left", padx=2)
         r += 1
 
         # -- 计时器 --
@@ -242,6 +250,22 @@ class TicTacToeApp(ctk.CTk):
         # -- 回合+棋盘统计 --
         self.round_label = ctk.CTkLabel(R, text="", font=F(size=13))
         self.round_label.grid(row=r, column=0, sticky="w", padx=8, pady=2); r += 1
+
+        # -- 机械臂调试: 手动输入脉冲坐标测试位置 --
+        ctk.CTkLabel(R, text="机械臂测试 (脉冲坐标)", font=fb).grid(row=r, column=0, sticky="w", **P); r += 1
+        df = ctk.CTkFrame(R, fg_color="transparent"); df.grid(row=r, column=0, sticky="ew", padx=3, pady=2); r += 1
+        ctk.CTkLabel(df, text="X:", font=fn).pack(side="left", padx=3)
+        self.test_x = ctk.CTkEntry(df, width=55, height=28, font=fn)
+        self.test_x.pack(side="left", padx=2)
+        self.test_x.insert(0, "1175")
+        ctk.CTkLabel(df, text="Y:", font=fn).pack(side="left", padx=3)
+        self.test_y = ctk.CTkEntry(df, width=55, height=28, font=fn)
+        self.test_y.pack(side="left", padx=2)
+        self.test_y.insert(0, "675")
+        ctk.CTkButton(df, text="测试落子", width=72, height=28, font=F(size=12),
+                      fg_color="#2a5a2a", command=self._on_test_move).pack(side="left", padx=4)
+        self.test_label = ctk.CTkLabel(df, text="", font=F(size=11), text_color="gray")
+        self.test_label.pack(side="left", padx=5)
 
         # -- 作弊弹窗区域 --
         self.cheat_frame = ctk.CTkFrame(R, fg_color="#4a2020", corner_radius=8)
@@ -310,7 +334,8 @@ class TicTacToeApp(ctk.CTk):
     def _on_side(self, s): self.engine.side = s
 
     def _on_board_click(self, idx):
-        """点击棋盘格子切换选中"""
+        """点击棋盘格子切换选中。UI、视觉和游戏逻辑均使用同一编号。"""
+        print(f"[CLICK] 格子={idx+1}, task={self.engine.task}")
         if self.engine.task == 8:
             # 双人对弈: 单选模式, 点击不同格子替换选中
             if self.grid_selected and self.grid_selected[0] == idx:
@@ -420,6 +445,34 @@ class TicTacToeApp(ctk.CTk):
         self.win_label.configure(text=f"已恢复棋子到格子: {restored}", fg_color="#2a3a1a")
         self._update_status()
 
+    def _on_calibrate(self):
+        """手动标定: 棋盘放标准位后点此按钮"""
+        if self.squares_center:
+            self.engine.serial.calibration.reset()
+            self.engine.serial.calibration.calibrate(self.squares_center)
+            self.win_label.configure(text="标定完成!", fg_color="#2a3a1a")
+        else:
+            self.win_label.configure(text="未检测到棋盘, 标定失败", fg_color="#3a1a1a")
+
+    def _on_test_move(self):
+        """机械臂测试: 手动输入脉冲坐标, 从黑棋区取棋放到指定位置"""
+        try:
+            x = int(self.test_x.get())
+            y = int(self.test_y.get())
+        except ValueError:
+            self.test_label.configure(text="请输入有效数字")
+            return
+        from lzjpy.serial_client import build_frame, CMD_PLACE_PIECE, Z_DEFAULT, BLACK_PIECES
+        frame = build_frame(cmd=CMD_PLACE_PIECE,
+                            src_x=BLACK_PIECES[0][0], src_y=BLACK_PIECES[0][1], src_z=Z_DEFAULT,
+                            dst_x=x, dst_y=y, dst_z=Z_DEFAULT)
+        if self.engine.serial.enabled:
+            self.engine.serial.serial.write(frame)
+            self.test_label.configure(text=f"已发送 ({x},{y})")
+        else:
+            self.test_label.configure(text=f"模拟 ({x},{y}), 串口未连")
+            print(f"[TEST] 模拟: ({x},{y})")
+
     def _on_reset(self):
         self.squares_center = None; self.board_box = None
         self.pieces = [0]*9; self._on_clear()
@@ -471,8 +524,13 @@ class TicTacToeApp(ctk.CTk):
         if self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
+                # 标定参数对应摄像头原始的 640x480 图像，必须先去畸变。
                 if self.use_undistort:
                     frame = cv2.remap(frame, self.map1, self.map2, cv2.INTER_LINEAR)
+
+                # 摄像头相对棋盘转了 90 度且图像左右镜像；后续检测和所有
+                # UI 棋盘均只使用这一个已校正的坐标系。
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
                 cl, ch = int(params["canny_low"]), int(params["canny_high"])
                 amin, amax = int(params["area_min"]), int(params["area_max"])
                 result = detect_chessboard(frame, canny_low=cl, canny_high=ch,
@@ -483,26 +541,33 @@ class TicTacToeApp(ctk.CTk):
                     try: self.pieces, self.detections = self._yolo_detect(frame)
                     except: pass
 
+                    # 每帧更新脉冲坐标 (需手动点"标定"启用)
+                    cal = self.engine.serial.calibration
+                    if cal.is_ready():
+                        cal.update_grid_positions(self.squares_center)
+
                 # 更新棋盘状态 (不做自动检测，人通过按钮确认)
                 if self.engine.status not in ("idle",):
                     self.engine.process_vision_result(self.pieces)
 
-                # 裁剪棋盘
+                # 裁剪棋盘 (pieces 按视觉顺序, 画面也按视觉显示)
                 hl = self.grid_selected[-1] if self.grid_selected else -1
                 ci = draw_crop_board(frame, self.board_box, self.pieces, highlight=hl, size=300)
                 self.crop_board.update(ci if ci is not None else frame)
 
-                # 虚拟棋盘
-                self.virtual_board.update(draw_virtual_board(self.pieces, highlight=hl, size=180))
+                # 虚拟棋盘: 显示引擎内部棋盘 (物理顺序)
+                self.virtual_board.update(draw_virtual_board(
+                    self.engine.get_board_1d(), highlight=hl, size=180))
 
                 # 摄像头预览(等比)
                 pw, ph = self.cam_preview.winfo_width(), self.cam_preview.winfo_height()
                 if pw > 50 and ph > 50:
                     fh, fw = frame.shape[:2]
                     s = min((pw-4)/fw, (ph-4)/fh)
-                    prv = cv2.resize(frame, (int(fw*s), int(fh*s)))
-                    pv2 = draw_board_overlay(prv, self.squares_center,
+                    # 棋盘坐标基于原始 frame，先绘制再缩放，避免标记错位。
+                    pv2 = draw_board_overlay(frame, self.squares_center,
                                              self.inner_radius, self.board_box, self.pieces, 0)
+                    pv2 = cv2.resize(pv2, (int(fw*s), int(fh*s)))
                     ci2 = cv2_to_ctk(pv2, int(fw*s), int(fh*s))
                     if ci2: self.cam_preview.configure(image=ci2, text="")
 
