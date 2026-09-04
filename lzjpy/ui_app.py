@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#三!/usr/bin/env python3
 """三子棋对弈系统 v4 - 全部题目功能"""
 
 import os, sys, json, time, cv2, numpy as np
