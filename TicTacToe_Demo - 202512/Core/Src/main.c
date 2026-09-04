@@ -174,14 +174,18 @@ int main(void)
 
 		GetKeyStatue();//获取按键状态值，放在大循环中处理占用时间短的话，按键识别不到按键抬键
 
-//        // TakeAndPutDownTheChess(Chessboard[0][0], Chessboard[0][1], Chessboard[1][0], Chessboard[1][1]);
-//		// TakeAndPutDownTheChess(Chessboard[2][0], Chessboard[2][1], Chessboard[3][0], Chessboard[3][1]);
-//		// TakeAndPutDownTheChess(Chessboard[4][0], Chessboard[4][1], Chessboard[5][0], Chessboard[5][1]);
-//		// TakeAndPutDownTheChess(Chessboard[6][0], Chessboard[6][1], Chessboard[7][0], Chessboard[7][1]);
-//		// TakeAndPutDownTheChess(Chessboard[8][0], Chessboard[8][1], Chessboard[0][0], Chessboard[0][1]);
+// TakeAndPutDownTheChess(Chessboard[0][0], Chessboard[0][1], Chessboard[1][0], Chessboard[1][1]);
+// TakeAndPutDownTheChess(Chessboard[2][0], Chessboard[2][1], Chessboard[3][0], Chessboard[3][1]);
+// TakeAndPutDownTheChess(Chessboard[4][0], Chessboard[4][1], Chessboard[5][0], Chessboard[5][1]);
+// TakeAndPutDownTheChess(Chessboard[6][0], Chessboard[6][1], Chessboard[7][0], Chessboard[7][1]);
+// TakeAndPutDownTheChess(Chessboard[8][0], Chessboard[8][1], Chessboard[0][0], Chessboard[0][1]);
 
 
-
+TakeAndPutDownTheChess(ChessputW[0][0], ChessputW[0][1], ChessputW[1][0], ChessputW[1][1]);
+TakeAndPutDownTheChess(ChessputW[2][0], ChessputW[2][1], ChessputW[3][0], ChessputW[3][1]);
+TakeAndPutDownTheChess(ChessputW[4][0], ChessputW[4][1], ChessputB[0][0], ChessputB[0][1]);
+TakeAndPutDownTheChess(ChessputB[1][0], ChessputB[1][1], ChessputB[2][0],ChessputB[2][1]);
+TakeAndPutDownTheChess(ChessputB[3][0], ChessputB[3][1], ChessputB[4][0],ChessputB[4][1]);
 
 
 
