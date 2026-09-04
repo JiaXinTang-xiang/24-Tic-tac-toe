@@ -26,6 +26,7 @@ class GameEngine:
         self.move_times = []     # 每步耗时记录
         self.round_start = 0     # 当前回合开始时间
         self.cheated_pieces = [] # 被移走的棋子列表
+        self.turn_start_board = [[0]*3 for _ in range(3)]  # 人回合开始时的棋盘快照
 
     # ==================================================================
     # 重置
@@ -64,12 +65,15 @@ class GameEngine:
         elif task_num == 5:
             self.turn = "human"
             self.status = "waiting_human"
+            self.turn_start_board = [row[:] for row in self.board]
         elif task_num == 6:
             self.turn = "human"
             self.status = "waiting_human"
+            self.turn_start_board = [row[:] for row in self.board]
         elif task_num == 8:
             # 双人对弈: 黑方先行, 轮流点击格子, 机器执行落子
             self.status = "waiting_human"
+            self.turn_start_board = [row[:] for row in self.board]
 
         return self.get_status_text()
 
@@ -221,6 +225,7 @@ class GameEngine:
                 # 对弈: 切换回合
                 self.turn = "human"
                 self.status = "waiting_human"
+                self.turn_start_board = [row[:] for row in self.board]
                 is_last = False
 
         self.round_start = time.time()
@@ -263,6 +268,7 @@ class GameEngine:
             is_last = True
         else:
             self.status = "waiting_human"  # 等下一个玩家
+            self.turn_start_board = [row[:] for row in self.board]
             is_last = False
 
         self.round_start = time.time()
@@ -273,17 +279,18 @@ class GameEngine:
     # ==================================================================
     def detect_cheat(self):
         """
-        检测系统棋子是否被移动.
+        检测系统棋子是否被移动. 对比人回合开始时的快照.
         返回: [{row, col, old, new}, ...] 或 []
         """
         moved = []
         for i in range(3):
             for j in range(3):
-                if self.board[i][j] != self.prev_board[i][j]:
-                    old = self.prev_board[i][j]
-                    new = self.board[i][j]
-                    if old == self.side and new != self.side:
-                        moved.append({"row": i, "col": j, "old": old, "new": new})
+                before = self.turn_start_board[i][j]
+                now = self.board[i][j]
+                if before != now:
+                    # 系统棋子被移走: 原来有 现在没了/变了
+                    if before == self.side and now != self.side:
+                        moved.append({"row": i, "col": j, "old": before, "new": now})
         return moved
 
     def restore_cheated_piece(self, row, col):
@@ -304,6 +311,7 @@ class GameEngine:
         self.cheated_pieces = []
         self.turn = "human"
         self.status = "waiting_human"
+        self.turn_start_board = [row[:] for row in self.board]
         return restored
 
     def get_elapsed(self):
